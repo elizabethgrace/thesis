@@ -1,0 +1,191 @@
+\documentclass[11pt,obeyspaces]{article} %obeyspaces for path
+\usepackage{graphicx}
+\usepackage{amssymb}
+\usepackage{pdfsync}
+\textwidth = 6.0 in
+\textheight =  8 in
+\oddsidemargin = 0 in
+\evensidemargin = 0 in
+\topmargin = 0.0 in
+\headheight = 0.0 in
+\headsep = 0 in
+\parskip = 0.2in
+\parindent = 0.0in
+\newcommand{\la}{\lambda}
+\newcommand{\lra}{$\longrightarrow$}
+\newcommand{\ch}{$\bigtriangleup$}
+
+\usepackage[normalem]{ulem} %for wavy lines
+\usepackage[usenames,dvipsnames]{xcolor} % for color
+\usepackage{caption} %for captions
+\usepackage{url} %for links
+\usepackage[colorlinks=true]{hyperref} %for link colors
+\usepackage{fixltx2e}
+\usepackage{lmodern}
+\usepackage[T1]{fontenc}
+\usepackage{textcomp}
+\usepackage[utf8]{inputenc}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb,amsfonts,amsthm,mathrsfs}
+\usepackage{graphicx,enumerate,courier}
+\usepackage{framed} %for frames, leftbar
+\usepackage{ulem}
+\usepackage{MnSymbol,wasysym}
+%for crazy fonts
+%\input Konanur.fd
+%\newcommand*\initfamily{\usefont{U}{Konanur}{xl}{n}}
+%\input GoudyIn.fd
+%\newcommand*\initfamily{\usefont{U}{GoudyIn}{xl}{n}}
+\usepackage{yfonts}
+\usepackage[T1]{fontenc}
+%
+
+\begin{document}
+\definecolor{shadecolor}{gray}{0.9}
+
+\centerline{\bf \LARGE OVERLY HONEST PROCESS NOTES}
+\centerline{\bf \Large Round 2}
+
+\section{Aligning the Images}
+
+\begin{shaded}
+\centerline{\sc \Large Code: Final Draft}
+\path{> ds9 &}\\
+\path{> cd data/iraf}\\
+\path{> pyraf} \\
+\path{--> cd  ~/Documents/Thesis/Summer/Data/}\textcolor{red}{\path{1}} \\ 
+\path{--> import drizzlepac} \\
+\path{--> from drizzlepac import tweakreg} \\
+\path{--> from drizzlepac import astrodrizzle} \\
+\path{--> from drizzlepac import tweakback} \\
+\path{--> unlearn tweakreg force=yes}\\
+\path{--> unlearn astrodrizzle force=yes}\\
+\path{--> unlearn tweakback force=yes}\\
+\path{--> unlearn imagefindpars force=yes}\\
+%%%%%%%WIDE
+\centerline{\noindent\rule{10cm}{0.4pt}}\\
+\centerline{\sc Wide filter}\\
+\path{--> display} \textcolor{red}{\path{f110w_pos1-01_flt}\path{.fits[1]}} \\
+\path{--> imexam} \\ \\
+\path{--> tweakreg.TweakReg('f110w_}\textcolor{red}{\path{pos1}}\path{-0?_flt.fits', conv_width=}\textcolor{red}{\path{3.7}}\path{, threshold=10, shiftfile=True, outshifts='shift_110_}\textcolor{red}{\path{pos1}}\path{.txt',updatehdr=False)} \\
+\path{--> tproject f110w_}\textcolor{red}{\path{pos1}}\path{-02_flt_catalog_fit.match f110w_}\textcolor{red}{\path{pos1}}\path{-02_catalog_fit.xyflt "c11,c12"}\\ 
+\path{--> epar display} \ \ \ Click NO on zrange\\ 
+\path{--> display f110w_}\textcolor{red}{\path{pos1-02}}\path{_flt.fits[sci] 1 zsc- z1=2 z2=25}\\ 
+\path{--> tvmark 1 f110w_}\textcolor{red}{\path{pos1-02}}\path{_flt_sci1_xy_catalog.coo mark=circle radii=5 color=204} \\ 
+\path{--> tvmark 1 f110w_}\textcolor{red}{\path{pos1-02}}\path{_catalog_fit.xyflt mark=circle radii=7 color=205}\\ \\
+\path{--> tweakreg.TweakReg('f110w_}\textcolor{red}{\path{pos1}}\path{-0?_flt.fits', conv_width=3.7, threshold=10, shiftfile=True, outshifts='shift_110_}\textcolor{red}{\path{pos1}}\path{.txt',updatehdr=True,wcsname=}\textcolor{red}{\path{`TWEAK_110')}} \\ 
+\path{--> astrodrizzle.AstroDrizzle('f110w_}\textcolor{red}{\path{pos1}}\path{-0?_flt.fits', output='f110w_}\textcolor{red}{\path{pos1}}\path{',driz_sep_bits='64,32', driz_cr_corr=yes,final_bits='64,32',final_wcs=yes,final_scale=}\textcolor{red}{\path{0.12}}\path{,final_rot=0.)} \\  \\
+\path{--> epar display} \ \ \ Set zrange = YES.  \\
+\path{--> display f110w_}\textcolor{red}{\path{pos1}}\path{_drz_sci.fits 1} \\
+\path{--> displ f110w_}\textcolor{red}{\path{pos1}}\path{_drz_wht.fits 2 fill+} \\ 
+%%%%%%%%NARROW
+\centerline{\noindent\rule{10cm}{0.4pt}}\\
+\centerline{\sc Narrow filter} \\ \\
+$\bigstar$ Astrodrizzle on unaligned flt files \\
+\path{--> astrodrizzle.AstroDrizzle('f128n_}\textcolor{red}{\path{pos1}}\path{-0?_flt.fits',output='f128n_}\textcolor{red}{\path{pos1}}\path{_notweak',driz_sep_bits='64,32',driz_cr_corr=yes,final_bits='64,32',final_wcs=yes,final_scale=}\textcolor{red}{\path{0.12}}\path{,final_rot=0.)} \\ \\
+$\bigstar$ Hand pick sources from drz, and export to WCS using Format > xy and Coordinate System > WCS > fk5 and named {\bf f128n\_\textcolor{red}{pos1}\_wcs.coo}. \\ \\
+$\bigstar$ \sout{Apply centroid algorithm to WCS regions} \textit{DANGER!!! Do not do this!} \\ \\
+$\bigstar$ Convert Coordinate Files to Pixel Space of Each File (drz and flt) \\
+Export regions from drz again, except this time as pixel space coordinates using using Format > xy and Coordinate System > Image. Load WCS drz regions onto flt files and export to pixel space coordinates the same way. \\ \\
+$\bigstar$ Apply centroid algorithm... \\
+$\RHD \RHD \RHD$ to flt position 1 pixel space regions: \\
+\path{--> teal phot}  \\
+image = { f128n\_\textcolor{red}{pos1}-01\_flt.fits[sci]} \\ 
+coords = {f128n\_\textcolor{red}{pos1}-01\_image.coo} \\
+output = {f128n\_\textcolor{red}{pos1}-01\_image.mag} \\
+\textit{Press enter a bunch of times, then open the output file in Macvim and make damn sure that all of the centroid coordinates are a) different and b) reasonable.}\\ 
+\path{--> txdump }\textcolor{red}{\path{f128n_pos1-01_image.mag}}\path{ xcen,ycen yes > }\textcolor{red}{\path{f128n_pos1-01_image.coo}} \\ 
+\textit{This txdump step replaces the input coordinate file with a file of the same name that now contains the updated coordinates. To make sure that it's working properly, name the output coordinate file something different and compare it side-by-side to the input coordinates.} \\
+$\RHD \RHD \RHD$ to flt position 2 pixel space regions: \\
+\path{--> teal phot}  \\ 
+\path{--> txdump }\textcolor{red}{\path{f128n_pos1-02_image.mag}}\path{ xcen,ycen yes > }\textcolor{red}{\path{f128n_pos1-02_image.coo}} \\ 
+$\RHD \RHD \RHD$ to flt position 3 pixel space regions: \\
+\path{--> teal phot}  \\
+\path{--> txdump }\textcolor{red}{\path{f128n_pos1-03_image.mag}}\path{ xcen,ycen yes > }\textcolor{red}{\path{f128n_pos1-03_image.coo}} \\ 
+$\RHD \RHD \RHD$ to flt position 4 pixel space regions: \\
+\path{--> teal phot}  \\ 
+\path{--> txdump }\textcolor{red}{\path{f128n_pos1-04_image.mag}}\path{ xcen,ycen yes > }\textcolor{red}{\path{f128n_pos1-04_image.coo}} \\ \\
+$\star$ Check: Open the .mag and .coo files in a text editor to make sure that a) the .mag coordinates are reasonable values; b) they are all different (you didn't accidentally use WCS coordinates); c) the .mag files are different from the original .coo files (centroid is doing something) \\ \\
+$\bigstar$ Tweak using these coordinates: \\
+\path{--> printf 'f128n_}\textcolor{red}{\path{pos1}}\path{_drz.fits[sci,1] }\textcolor{red}{\path{f128n_pos1_image.coo}}\path{ \n f128n_}\textcolor{red}{\path{pos1}}\path{-01_flt.fits[sci,1] }\textcolor{red}{\path{f128n_pos1-01_image.coo}}\path{ \n f128n_}\textcolor{red}{\path{pos1}}\path{-02_flt.fits[sci,1] }\textcolor{red}{\path{f128n_pos1-02_image.coo}}\path{ \n f128n_}\textcolor{red}{\path{pos1}}\path{-03_flt.fits[sci,1] }\textcolor{red}{\path{f128n_pos1-03_image.coo}}\path{ \n f128n_}\textcolor{red}{\path{pos1}}\path{-04_flt.fits[sci,1] }\textcolor{red}{\path{f128n_pos1-04_image.coo}}\path{ \n' > }\textcolor{red}{\path{f128n_pos1_catfile.list}} \\ 
+"Printf" means "print to file"... nothing special \\ 
+$\star$ Check: Open (vim) \path{f128n_pos1_catfile.list} to make sure everything made it  \\ \\
+\path{--> tweakreg.TweakReg('f128n_}\textcolor{red}{\path{pos1}}\path{_drz.fits, f128n_}\textcolor{red}{\path{pos1}}\path{-01_flt.fits, f128n_}\textcolor{red}{\path{pos1}}\path{-02_flt.fits, f128n_}\textcolor{red}{\path{pos1}}\path{-03_flt.fits, f128n_}\textcolor{red}{\path{pos1}}\path{-04_flt.fits', writecat=False, catfile='}\textcolor{red}{\path{f128n_pos1_catfile.list}}\path{', residplot='NoPlot', see2dplot=no,updatehdr=True,wcsname='}\textcolor{red}{\path{TWEAK_128'}}\path{)} \\ \\
+$\star$ Troubleshoot: If you get a low match error, check the contents of your coordinate files. Also, the wcsname does not matter at all. \\ \\
+\path{--> tweakback.tweakback('f128n_}\textcolor{red}{\path{pos1}}\path{_drz.fits','f128n_}\textcolor{red}{\path{pos1}}\path{-0?_flt.fits',verbose=True)}\\ \\
+$\bigstar$ Astrodrizzle with the new coordinates:\\
+\path{-->astrodrizzle.AstroDrizzle('f128n_}\textcolor{red}{\path{pos1}}\path{-0?_flt.fits',output='f128n_}\textcolor{red}{\path{pos1}}\path{',driz_sep_bits='64,32',driz_cr_corr=yes,final_bits='64,32',final_wcs=yes,final_scale=}\textcolor{red}{\path{0.12}}\path{,final_rot=0.)} \\ \\
+$\star$ Check: Open \path{f128n_pos1_drz_sci.fits} in ds9. Does it look ok? Check the \path{drz_wht.fits} file. Do the spots correspond to bad areas? Can't do much more than a visual check until I try to align it with the wide filter. \\ \\ \\ \\
+%%%%%%%%BOTH 
+\centerline{\noindent\rule{10cm}{0.4pt}}\\
+\centerline{\sc Align narrow and wide}
+
+{\bf 1. Align the \textit{headers} of the narrow and wide drizzled files in WCS:}
+
+$\bigstar$ Hand pick sources from \path{f110w_pos}\textcolor{red}{\path{1}}\path{_sci_drz.fits} (reasoning: has less bright clouds, so less chance of mistaking H-II region for a source). \\
+$\star$ Check: export wide sources to \path{f110w_pos}\textcolor{red}{\path{1}}\path{_drz_wcs.coo} via xy > fk5 and load them onto \path{f128n_pos}\textcolor{red}{\path{1}}\path{_sci_drz.fits} to make sure that they appear to correspond to sources in both images. \\ \\
+$\bigstar$ Export wide sources to \path{f110w_pos}\textcolor{red}{\path{1}}\path{_drz_image.coo} via xy > image, and export narrow sources to \path{f128n_pos}\textcolor{red}{\path{1}}\path{_drz_image.coo} via xy > image. \\ \\
+$\bigstar$ Apply centroid and txdump: \\
+\path{--> teal phot} \\
+image = { f110w\_pos\textcolor{red}{1}\_drz\_sci.fits} \\ 
+coords = {f110w\_pos\textcolor{red}{1}\_drz\_image.coo} \\
+output = {f110w\_pos\textcolor{red}{1}\_drz\_image.mag} \\
+\path{--> teal phot} \\
+image = { f128n\_pos\textcolor{red}{1}\_drz\_sci.fits} \\ 
+coords = {f128n\_pos\textcolor{red}{1}\_drz\_image.coo} \\
+output = {f128n\_pos\textcolor{red}{1}\_drz\_image.mag} \\ \\
+$\star$ Test run: Before running the next step as-is, run it with a different name for the output coordinate file; i.e., instead of \path{f128n_pos1_drz_image.coo}, use \path{f128n_pos1_drz_image_test.coo} as a test run. If it works, run the code with \path{f128n_pos1_drz_image.coo}, which will overwrite the existing file. \\ \\
+\path{--> txdump }\textcolor{red}{\path{f110w_pos1_drz_image.mag}}\path{ xcen,ycen yes > }\textcolor{red}{\path{f110w_pos1_drz_image.coo}} \\ 
+\path{--> txdump }\textcolor{red}{\path{f128n_pos1_drz_image.mag}}\path{ xcen,ycen yes > }\textcolor{red}{\path{f128n_pos1_drz_image.coo}} \\ \\
+$\bigstar$ Create a catfile containing the .coo files for the narrow and wide drz.fits files in the correct order:\\
+\path{--> printf 'f128n_}\textcolor{red}{\path{pos1}}\path{_drz_sci.fits} \textcolor{red}{\path{f128n_pos1_drz_image.coo}} \path{\n f110w_}\textcolor{red}{\path{pos1}}\path{_drz_sci.fits} \textcolor{red}{\path{f110w_pos1_drz_image.coo}} \path{\n' >} \textcolor{red}{\path{pos1_catfile.list}} \\ \\
+$\star$ Check: Open \textcolor{red}{\path{pos1}}\path{_catfile.list} to make sure everything made it  \\ \\
+$\bigstar$ Tweakreg on the two drz files, in the correct order (I want to move the narrow file, not the wide one, so I list the wide one first which makes it the reference):\\ \\
+$\star$ Test run: Let \path{updatehdr=False}. \\
+\path{--> tweakreg.TweakReg('f110w_pos1_drz_sci.fits,f128n_pos1_drz_sci.fits', writecat=False, catfile='pos1_catfile.list', residplot='NoPlot', see2dplot=no, shiftfile=True, outshifts='drz_pos1.txt', updatehdr=False)}\\ \\
+$\star$ Check: Open \path{drz_pos1.txt} to see if the [dx, dy, drot, scale, xfit\_rms, yfit\_rms] values make sense. Reasonable values for dx and dy are within $\pm 10$; drot and scale should not be large shifts; and xfit\_rms and yfit\_rms should be within $\pm 0.15$ or so. \\ \\
+\path{--> tweakreg.TweakReg('f110w_pos1_drz_sci.fits, f128n_pos1_drz_sci.fits', writecat=False, catfile='pos1_catfile.list', residplot='NoPlot', see2dplot=no, shiftfile=True, outshifts='drz_pos1.txt', updatehdr=True, wcsname='TWEAK_WCS')} \\ \\
+$\star$ Check the header to make sure the WCS name you just specified has made it: \\
+\path{--> hedit f128n_pos1_drz_sci.fits wcsnam* .} \\
+The correct output has \path{TWEAK_WCS} equal to the very last wcsname. \\ 
+
+{\bf 2. Propagate solution back to flt fits files:}
+
+$\bigstar$ Use tweakback: \\
+\path{--> tweakback.tweakback('f128n_}\textcolor{red}{\path{pos1}}\path{_drz_sci.fits',input='f128n_}\textcolor{red}{\path{pos1}}\path{-0?_flt.fits',verbose=True)}
+
+$\star$ Check the header to make sure the WCS name you just specified has made it: \\
+\path{--> hedit  f128n_pos1-0?_flt.fits[1] wcsnam* .}\\
+Should have the most recent WCS name (\path{WCSNAM}) equal to \path{TWEAK_WCS} (from above). \\ 
+
+{\bf 3. Align narrow and wide drizzled images in pixel space:}
+
+$\bigstar$ Use astrodrizzle with the reference image set to \path{f110w_pos1_drz_sci.fits}.\\ \\
+$\star$  Test run: Rename the \path{drz_sci} and \path{drz_wht} narrow filter files (the ones I'm going to change in a minute) because otherwise, the following astrodrizzle step will overwrite them and I may want to compare. \\
+\path{--> imrename f128n_pos1_drz_sci.fits f128n_pos1_drz_sci_v1.fits}\\
+\path{--> imrename f128n_pos1_drz_wht.fits f128n_pos1_drz_wht_v1.fits}\\ \\
+Then, finally, proceed to the astrodrizzle step: \\
+\path{--> astrodrizzle.AstroDrizzle('f128n_pos1-0?_flt.fits',output='f128n_pos1',driz_sep_bits='64,32',driz_cr_corr=yes,final_bits='64,32',final_wcs=yes,final_refimage='f110w_pos1_drz_sci.fits')}\\
+$\star$ Check: Compare the two images in \path{ds9} using and RGB frame (I like to use red for f128n so that the H-II regions glow red). Confirmed: It worked! See Figs.~\ref{fig:itlives} and \ref{fig:itlives2}. \\ \\
+
+\end{shaded}
+
+\begin{figure}
+\centering
+\begin{minipage}[b]{.45\linewidth}
+\includegraphics[width=1\columnwidth]{pos1_beforeandafter1}
+\caption{RGB frames with f128n (red) and f110w (green). LHS has \texttt{f128n\_pos1\_drz\_sci\_v1.fits}, and \texttt{f128n\_pos1\_drz\_sci.fits} on RHS.}
+\label{fig:itlives}
+\end{minipage}
+\quad
+\begin{minipage}[b]{.45\linewidth}
+\includegraphics[width=1\columnwidth]{pos1_beforeandafter2}
+\caption{RGB frames with f128n (red) and f110w (green). Same as Fig.~\ref{fig:itlives}, except the selection is taken from a different portion of the sky.}
+\label{fig:itlives2}
+\end{minipage}
+\end{figure}
+
+Now, I must repeat for the rest of the positions. 
+
+
+\end{document}

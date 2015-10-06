@@ -1,0 +1,842 @@
+\documentclass[11pt,obeyspaces]{article} %obeyspaces for path
+\usepackage{graphicx}
+\usepackage{amssymb}
+\usepackage{pdfsync}
+\textwidth = 6.0 in
+\textheight =  8 in
+\oddsidemargin = 0 in
+\evensidemargin = 0 in
+\topmargin = 0.0 in
+\headheight = 0.0 in
+\headsep = 0 in
+\parskip = 0.2in
+\parindent = 0.0in
+\newcommand{\la}{\lambda}
+\newcommand{\lra}{$\longrightarrow$}
+\newcommand{\ch}{$\bigtriangleup$}
+
+\usepackage[normalem]{ulem} %for wavy lines
+\usepackage[usenames,dvipsnames]{xcolor} % for color
+\usepackage{caption} %for captions
+\usepackage{url} %for links
+\usepackage[colorlinks=true]{hyperref} %for link colors
+\usepackage{fixltx2e}
+\usepackage{lmodern}
+\usepackage[T1]{fontenc}
+\usepackage{textcomp}
+\usepackage[utf8]{inputenc}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb,amsfonts,amsthm,mathrsfs}
+\usepackage{graphicx,enumerate,courier}
+\usepackage{framed} %for frames, leftbar
+\usepackage{ulem}
+\usepackage{MnSymbol,wasysym}
+%for crazy fonts
+%\input Konanur.fd
+%\newcommand*\initfamily{\usefont{U}{Konanur}{xl}{n}}
+%\input GoudyIn.fd
+%\newcommand*\initfamily{\usefont{U}{GoudyIn}{xl}{n}}
+\usepackage{yfonts}
+\usepackage[T1]{fontenc}
+%
+
+\begin{document}
+\definecolor{shadecolor}{gray}{0.9}
+
+\centerline{\bf \LARGE OVERLY HONEST PROCESS NOTES}
+
+\bigskip
+\bigskip
+
+The following is a summary of what I did, including what I attempted to do, problems I ran into, mistakes I made, and solutions. Mostly it consists of embarrassing mistakes and bugs in my code that I figured out after a very long time because I was too proud to ask anyone for help. 
+\bigskip
+
+\centerline{\bf \Large Concerns}
+\begin{itemize}
+\item My janky alignment method needs to be replaced by DrizzlePac 
+\item Coyote's program doesn't totally work and I need to write my own
+\item Some of the images overlap. Did I double count H~II regions?
+\end{itemize}
+
+\bigskip
+\bigskip
+
+\centerline{\Large \bf Naming System}
+
+Data types/extensions:
+\begin{itemize}
+\item \textbf{flt.fits}: Flat field images used to get drizzled image.
+\item \href{http://documents.stsci.edu/hst/HST_overview/documents/DrizzlePac/ch35.html}{\textbf{flt\_hlet.fits}}: Headerlets contain summaries of WCS info for a single exposure and are used to update WCS information in additional copies of the same image. These headerlets correspond to the flat field images.
+\item \href{http://www.stsci.edu/hst/wfc3/documents/handbooks/currentDHB/wfc3_Ch22.html}{\textbf{ima.fits}}: Processing of IR exposures results in an intermediate MultiAccum (ima) file, which is a file that has had all calibrations applied (dark subtraction, linearity correction, flat-fielding, etc.) to all of the individual readouts of the IR exposure. 
+\item \href{http://www.stsci.edu/hst/wfc3/documents/handbooks/currentDHB/wfc3_Ch22.html}{\textbf{spt.fits}}: Uncalibrated support file containing telescope and WFC3 telemetry and engineering data. 
+\item \href{http://www.stsci.edu/hst/wfc3/documents/handbooks/currentDHB/wfc3_Ch22.html}{\textbf{trl\_fits}}: (Uncalibrated) trailer file with processing log/comments describing the progress of calibration. 
+\end{itemize}
+
+New naming scheme: [filter]\_pos[position number]-[exposure number]\_[extension].fits \\
+
+\newpage
+
+\vspace*{\fill}
+%\centerline{\normalfont{\initfamily{\fontsize{22mm}{22mm}\selectfont{TASK ONE}}}} 
+%\centerline{\normalfont{\initfamily{\fontsize{10mm}{10mm}\selectfont{ONE}}}}
+\centerline{\Huge Task 1:}
+\bigskip
+\centerline{\Huge Align Images Properly}
+\vspace*{\fill}
+
+\newpage 
+
+\centerline{\textsc{\Large Agenda}}
+\begin{enumerate}
+\item Make a drizzled image for each filter, starting with position 1.  
+\item Align these drizzled images with each other, starting with position 1. 
+\item Replicate this process for the rest of the positions.
+\end{enumerate}
+
+\section{Make a drizzled image for each filter (starting with position 1)}
+
+\subsection{Wide Filter (of position 1)}
+\subsubsection{Align wide filter's flat-field images (pos 1)}
+ 
+In Ureka terminal:\\
+\path{> ds9 &}\\
+\path{> cd data/iraf}\\
+\path{> pyraf} \\
+\path{--> cd  ~/Documents/Thesis/Summer/Data/1} \\ \\
+To load the package and reset the default values (must be done before using {\bf tweakreg}):\\
+\path{--> import drizzlepac} \\
+\path{--> from drizzlepac import tweakreg} \\
+\path{--> from drizzlepac import astrodrizzle} \\
+\path{--> from drizzlepac import tweakback} \\
+\path{--> unlearn tweakreg force=yes}\\
+\path{--> unlearn astrodrizzle force=yes}\\
+\path{--> unlearn tweakback force=yes}\\
+\path{--> unlearn imagefindpars force=yes}\\ \\
+To get the FWHM of my PSF, must first display the image: \\
+\path{--> display f110w_pos1-01_flt.fits[1]} \\
+Mistakes I made with this line: 1. You have to specify the header; and 2. you have to have DS9 open already. Also you should tell it which frame to load it into.\\
+
+
+\newpage
+\begin{oframed}
+Ok, so at this point I discovered that there were 5 (FIVE!!!) extensions that I didn't know existed for the entire duration of my thesis. To investigate, I wanted to use Python. For \path{astropy}, open a regular old terminal and type \\
+\path{Elizabeth\$ > python} \\
+\path{> > > from astropy.io import fits}\\
+\path{> > > hdulist=fits.open('f110w_pos1-01_flt.fits')}\\
+\path{> > > hdulist.info()} shows the list of headers (there are 7 of them) \\ 
+\path{> > > hdulist[6].header} shows the contents of the 7th header
+\begin{enumerate}
+\item \href{http://fits.gsfc.nasa.gov/fits_primer.html}{\bf [PRIMARY] aka [0]}: primary HDU, dimensionless, contains only a header 
+\item \href{http://fits.gsfc.nasa.gov/fits_primer.html}{\bf [SCI] aka [1]}: science HDU, contains the data to be analyzed and a header.
+\item \href{http://iraf.noao.edu/irafnews/apr98/irafnews.8.html}{\bf [ERR] aka [2]}: statistical error associated with each pixel 
+\item \href{http://iraf.noao.edu/irafnews/apr98/irafnews.8.html}{\bf [DQ] aka [3]}: data quality array containing boolean conditions that identify various possible anomalous conditions that may be associated with each pixel (stored as an integer). White pixels are bad pixels. 
+\item \href{http://iraf.noao.edu/irafnews/apr98/irafnews.8.html}{\bf [SAMP] aka [4]}: gives the number of samples for each pixel
+\item \href{http://iraf.noao.edu/irafnews/apr98/irafnews.8.html}{\bf [TIME] aka [5]}: gives the integration time for with each pixel
+\item \textbf{[WCSCORR] aka [6]}: It appears to be an HDU that contains info about the World Coordinate System correction in the form of a header, but there is no data.
+\end{enumerate}
+\begin{center}
+\includegraphics[width=.7\columnwidth]{erroranddq}
+\captionof{figure}{Error extension (left) and data quality (DQ) extension (right, white indicates badness). Image is f110w\_pos1-01\_flt.fits. The DQ extension was supposed to flag cosmic rays, and I think it did a good job for some, but some of the big blobs are covering up what appear to be H II regions.}
+\label{fig:errdq}
+\end{center}
+\end{oframed}
+
+To get the FWHM of the PSF of the SCI header, which is used to get {\tt conv\_width}, I used:\\
+\path{--> imexam}\\
+After which point a new window opened up, and I hovered over a star (used as a source) and pressed r which puts you in $\sim donut~space \sim$ (or radial profile space, whatevs). Now a curve appeared in this new window, and three estimates of the FWHM were found in its lower band (the last three numbers). For my star, the estimates of the FWHM were 1.55, 1.37, and 1.62, which are not unreasonable. They're also not super helpful, though... the {\tt conv\_width} parameter is estimated to be approximately twice the FWHM of the PSF, so this star recommends {\tt conv\_width} $\approx 2.74 - 3.24$. Last time I did this, I used a value of 3.7, and the example uses 3.5. The second star I used recommends $3.82-4.44$, so all this really told us is that the parameter should be between 2.74 and 4.44, which I already knew. Whatever. To get out of $\sim donut~space \sim$, press q. \\
+
+\begin{table}[b]
+\caption{Contents of `shift\_110\_pos1.txt' with conv\_width=3.7 and threshold=10}
+\begin{center}
+\begin{tabular}{|c|c|c|c|c|c|c|} \hline
+Exposure & dx & dy & drot & scale & xfit\_rms & yfit\_rms \\ \hline
+f110w\_pos1-01\_flt.fits & 0.000000 & 0.000000 & 0.000000 & 1.000000 & 0.000000 & 0.000000  \\
+f110w\_pos1-02\_flt.fits & -0.027294 & -0.013230 & 0.000010 & 1.000008 & 0.045779 & 0.097566 \\
+f110w\_pos1-03\_flt.fits & -0.108631 & -0.026619 & 359.998768 & 0.999978 & 0.076723 & 0.036816 \\
+f110w\_pos1-04\_flt.fits & -0.047781 & -0.028944 & 359.999376 & 0.999983 & 0.118159 & 0.103524 \\ \hline
+\end{tabular}
+\end{center}
+\label{table:shift}
+\end{table}
+
+\path{--> tweakreg.TweakReg('f110w_pos1-0?_flt.fits', conv_width=3.7, threshold=10, shiftfile=True, outshifts='shift_110_pos1.txt',updatehdr=False)}\\
+I chose {\tt conv\_width}=3.7 because that was what I used before. The shift file (containing info about how much each exposure is shifted with respect to the first exposure) was named using the filter wavelength and position. A mistake I made here was to put in a number instead of the ?, which is a wildcard that allows it to compare all of the exposures within one position. The second mistake I made was to look at shift\_110\_pos1.txt before pressing enter 3 times to evaluate the four exposures. \\
+
+The contents of the shift file `shift\_110\_pos1.txt' are in Table~\ref{table:shift}. The first row compares the file to itself, so all of the other files would ideally be the value in the first column. The x and y offsets are pretty small, and the rotational offsets are also small (it's measured in degrees, so the values that are approximately 360 degrees are actually very small angles). The scale is approximately 1, which is good, and the x and y RMS fits are close to zero. It's not perfect, though -- these offsets definitely could be improved. Just knowing that the values are reasonable, though, is comforting. \\
+
+It also output three plots of the offsets and residuals, which I saved as `offset histogram 110\_pos1 cw=3p7 t=10.png', `residuals 110\_pos1 cw=3p7 t=10.png', and `vector residuals 110\_pos1 cw=3p7 t=10.png'. \\
+
+Because I set {\tt writecat=True}, I now have a catalog file that tells me which coordinate files correspond to which exposure data files. The above {\tt tweakreg} command creates a bunch of coordinate files with default names that are fairly unsurprising. For `f110w\_pos1-01\_flt.fits', the coordinate file is `f110w\_pos1-01\_flt\_sci1\_xy\_catalog.coo', and so forth. \\
+
+Since I'm pretty happy with these results -- they seem reasonable, more or less -- I'm going to commit and set {\tt updatehdr=True}: \\
+
+\path{--> tweakreg.TweakReg('f110w_pos1-0?_flt.fits', conv_width=3.7, threshold=10, shiftfile=True, outshifts='shift_110_pos1.txt',updatehdr=True,wcsname=`TWEAK_110')} \\
+I added a wcsname because apparently it helps later, according to example 5. They also did a shortcut that didn't want to work for me so I used the above code instead of their thing. \\
+
+Then I checked the headers:\\
+\path{-->hedit f110w_pos1-0?_flt.fits[1]} 
+
+\subsubsection{Plot the sources one on top of the other (pos 1)}
+\label{plotsources}
+
+\begin{figure}
+\centering
+\begin{minipage}[b]{.45\linewidth}
+\includegraphics[width=1\columnwidth]{wide_pos1-02_nocircles}
+\caption{{\tt f110w\_pos1-02\_flt.fits} with no circles}
+\label{fig:circles}
+\end{minipage}
+\quad
+\begin{minipage}[b]{.45\linewidth}
+\includegraphics[width=1\columnwidth]{wide_pos1-02_circles}
+\caption{{\tt f110w\_pos1-02\_flt.fits}  with circles}
+\label{fig:nocircles}
+\end{minipage}
+\end{figure}
+
+\path{-->tproject f110w_pos1-02_flt_catalog_fit.match f110w_pos1-02_catalog_fit.xyflt "c11,c12"}\\
+\path{-->epar display}\\
+Then click "no" on zrange so you can set z1 and z2:\\
+\path{-->display f110w_pos1-02_flt.fits[sci] 1 zsc- z1=2 z2=25}\\
+\path{-->tvmark 1 f110w_pos1-02_flt_sci1_xy_catalog.coo mark=circle radii=5 color=204} \\
+\path{-->tvmark 1 f110w_pos1-02_catalog_fit.xyflt mark=circle radii=7 color=205}\\ 
+
+
+
+The results from the above commands are in Figs.~\ref{fig:circles} and \ref{fig:nocircles}. Note that you have to have \path{ds9} open already for it to work. They look okay to me -- they don't select the noise on the edges, and I don't think they're selecting cosmic rays. It looks to me like they're finding the H~II regions. I changed the zscale to make the effects more obvious (on default zscale you can't really tell what's going on). 
+
+%4 sigma is the very lowest you should go.
+
+\subsubsection{Use Astrodrizzle to Make Drizzled Image (pos 1)}
+
+\path{-->astrodrizzle.AstroDrizzle('f110w_pos1-0?_flt.fits', output='f110w_pos1',driz_sep_bits='64,32', driz_cr_corr=yes,final_bits='64,32',final_wcs=yes,final_scale=0.12,final_rot=0.)} \\ 
+
+At this point, I had previously used a \path{final_scale} at around 0.04, which is what Example 5 suggested, but Alison told me that it was oversampled. She said the FWHM of the PSF should be around 2 or 3, and mine was around 6, so I increased the parameter (which controls how many arc seconds are inside one pixel) to 0.12. (I used guess and check to determine this number.)
+
+Then \\
+\path{-->hedit *drz_sci.fits', wcsnam* .} \\
+\path{f110w_pos1_drz_sci.fits,WCSNAME = DRZWCS} \\
+Where the second line is the output of the first line. \\ 
+
+To inspect drizzled images:\\ 
+\path{-->display f110w_pos1_drz_sci.fits 1} \\
+\path{-->displ f110w_pos1_drz_wht.fits 2 fill+} \\
+The result of this first try is in Fig.~\ref{fig:firsttry}. The final weight image parameter was set to EXP, so the image resembles an exposure time map of the combined data set. 
+
+\begin{figure}
+\centering
+\includegraphics[width=1\columnwidth]{canseesources}
+\caption{Astrodrizzle results, weighted image (RHS)}
+\label{fig:firsttry}
+\end{figure}
+
+
+For UVIS data, an imprint of sources could mean that one or more frames were excluded from the final product. I think the RHS kind of looks like an imprint of sources, so I might have have excluded frames somewhere. I went back and did Section \ref{plotsources} for pos1-03 and pos1-04. They look basically the same as pos1-02. Then I ran AstroDrizzle again and got the exact same thing. I'm starting to think that the big dots actually aren't sources -- they're bad pixel ares. I blinked the two frames and I the black dots do not correspond to sources, but some of them are on top of bad pixels (as they should be). This image looks a lot like the data quality array, except rotated. So actually I think this result is fine. 
+
+
+\begin{figure}
+\centering
+\includegraphics[width=1\columnwidth]{astrodrizzle1}
+\caption{Zoomed in version of Fig.~\ref{fig:firsttry}. Looks like bad areas were successfully picked out. (Look closely)}
+\label{fig:badpixels}
+\end{figure}
+
+I zoomed in on the image and blinked the two frames. I realized that the weighted image actually picked out areas of bad pixels that I would never have noticed otherwise (see Fig.~\ref{fig:badpixels}). It actually looks really great. Red arrows point to areas of bad pixels that correspond to black dots in the zoomed in portion of the weighted image. 
+
+
+\subsection{Narrow Filter (pos 1)}
+
+I have to go back and do the same thing I just did except for the narrow band images. I used \path{conv_width}=3.7 and threshold=5 sigma. For displaying the circles, I used z1=0 and z2=1. I realized from this image that it was finding too many cosmic rays (see Fig.~\ref{fig:narrowcosmic}). 
+
+\begin{table}[b]
+\caption{Contents of `shift\_128\_pos1.txt' with conv\_width=3.7 and threshold=5 or 8}
+\begin{center}
+\begin{tabular}{|c|c|c|c|c|c|c|c|} \hline
+Exposure & thr. & dx & dy & drot & scale & xfit\_rms & yfit\_rms \\ \hline
+f128n\_pos1-01 & 5 & 0.000000 & 0.000000 & 0.000000 & 1.000000 & 0.000000 & 0.000000  \\
+f128n\_pos1-02 & 5 & -4.237787 & -1.389291  &  359.999149  &  0.999986  & 0.023271 & 0.019675 \\
+f128n\_pos1-03 & 5 &  -2.661339 &  -3.763510 & 359.999466  &   0.999978 &  0.023685 & 0.021161\\
+f128n\_pos1-04 & 5 & 1.577010 & -2.372787   & 359.999536   &  1.000007  & 0.022071 & 0.022686 \\ \hline
+f128n\_pos1-01 & 8 & 0.000000 & 0.000000 & 0.000000 & 1.000000 & 0.000000 & 0.000000  \\
+f128n\_pos1-02 & 8 &  0.003140 &  -0.002427 &   0.000209  &   0.999997 &  0.018526 & 0.011627  \\
+f128n\_pos1-03 & 8 & -0.001002 & -0.000952  &  359.999969  &  0.999997 &  0.016714  & 0.014341\\
+f128n\_pos1-04 & 8 &  -0.003135 & 0.000931  &  0.000438 &    1.000002 &  0.015213 & 0.014639
+\\ \hline
+\end{tabular}
+\end{center}
+\label{table:shift2}
+\end{table}
+
+\begin{figure}
+\centering
+\begin{minipage}[b]{.45\linewidth}
+\includegraphics[width=1\columnwidth]{narrowcosmic}
+\caption{First attempt at getting the thing to find sources not cosmic rays}
+\label{fig:narrowcosmic}
+\end{minipage}
+\quad
+\begin{minipage}[b]{.45\linewidth}
+\includegraphics[width=1\columnwidth]{sourcecatalog_narrow}
+\caption{These are the handpicked coordinates I used instead.}
+\label{fig:catalog}
+\end{minipage}
+\end{figure}
+
+As a result, I decided to increase threshold. This didn't work. I decided to make a source catalog of my own (see Fig.~\ref{fig:catalog}) building on previous work from Sidney and Alison, replicated below in \textsf{textsf font} (except for blue, which are my additions or corrections):
+
+\begin{oframed}
+\begin{enumerate}
+{\sf \item Astrodrizzle on all desired {\bf flt fits} files without tweakreg. 
+\item Hand pick source catalog in ds9 \textcolor{blue}{for some chosen alignment image - in my case, {\bf f128n\_pos1\_drz.fits}. I chose this image, i.e., the drizzled image produced by Hubble, because although it isn't perfect (and its imperfections are the reason I have to do this entire Drizzling process in the first place), it still is better than the {\bf flt fits} files. I will use this catalog on all of the {\bf flt fits} files so that the tedious hand-selection process only happens once. } \\
+Save source catalog with {\it Regions} > {\it Save Regions} > Save as {\bf nameyouwant.coo} \color{blue}{(I named it narrowcat.coo) and export to WCS by selecting {\it Format > xy} and {\it Coordinate System > WCS > fk5}. The purpose is to use the WCS alignment to align the images in pixel space.} 
+\item \color{blue} Center the WCS coordinate file to the centroids of sources using a {\bf centroid} alignment algorithm in {\bf pyraf}: \\
+\color{black} \path{--> teal phot} \\
+
+\textcolor{blue}{In the window that should appear, choose:}
+\begin{itemize}
+\item {\bf image = image\_whose\_catalog\_it\_is.fits[sci,1]} - \color{blue} For my narrow data set, this is {\bf f128n\_pos1\_drz.fits[sci,1]} \color{black}
+\item {\bf coords=nameyouwant.coo} - \color{blue} For me, this is \color{blue} {\bf narrowcat.coo}\color{black}
+\item and {\bf output = whateveryouwant.mag}, \color{blue} {\bf narrow.mag} for me. \color{black} 
+\item {\bf Interactive = No}
+\end{itemize}
+This will run your catalog through a centroid algorithm, aligning your hand-picked source locations with the centers of sources, improving accuracy.
+\item \textcolor{blue}{Now you are ready to export the coordinate file to pixel space. Load your alignment file (for me, {\bf f128n\_pos1\_drz.fits[sci,1]}) in ds9, load the centroid-aligned WCS coordinate file using {\it Regions > Load Regions}, and then export the regions using {\it Regions > Save Regions} except this time, select {\it Format > XY}. Also select {\it Coordinate System > Image} as before.}
+\item \textcolor{blue}{Run the centroid algorithm again using identical steps to those in Step 3.}
+\item \textcolor{blue}{Repeat steps 4-5, except instead of loading the alignment file in Step 4, load the {\bf flt fits} files. This is the step that hopefully allows you to get around the arduous process of hand picking sources for every single file; the hope is that the WCS is well-enough aligned that when you load the {\bf .coo} file created from NASA's {\bf drz fits} image, the circles should land on top of the same sources (or close enough to them that you can still tell what they are and perhaps adjust them slightly). If this doesn't work for you, then perhaps the WCS is poorly aligned or you accidentally exported to XY instead of WCS. The WCS {\bf .coo} files should be the same for the {\bf flt fits} files as it was for NASA's {\bf drz fits} image, but the XY should vary by image.}
+\item \textcolor{blue}{Feed the {\bf .coo} files into the {\bf printf} algorithm to make a catalog, or catfile, which is literally just a text file with the {\bf .coo} files as lines.} In pyraf, \\
+\path{-->printf 'f128n_pos1_drz.fits[sci,1] catalogref.coo \n flt_fits_image_1.fits[sci,1] catalog1.coo \n flt_fits_image_2.fits [sci,1]' catalog2.coo \n > (meaningfulname)_xy_catfile.list}\\
+where each pair of image and coordinate files is separated by \path{\n} for as many files as is necessary (just three in this case). In this step be sure to have your reference image be first in your catfile, as tweakreg uses the first image in a list as the reference and aligns the others to it. 
+\item Now prepare for {\bf tweakreg}. In pyraf,\\
+\path{--> txdump whateveryouwant.mag xcen,ycen yes > finalcatalogname.coo}\\
+to dump the catalog to a text file readable by tweakreg.
+\item Now use {\bf tweakreg}. In pyraf, {\bf tweakreg} with {\bf catfile = `(meaningfulname) xy catfile.list'}, remembering to list your input images as: {\bf `refimage.fits, image1.fits, image2.fits, ...'}. 
+\item {\bf tweakback} the {\bf flt.fits} files with their drizzled counterpart as a reference.
+\item redrizzle the {\bf flt.fits} files.}
+\end{enumerate}
+\end{oframed}
+
+So here's what I did: 
+
+\begin{figure}
+\centering
+\includegraphics[width=1\columnwidth]{centroid_beforeandafter}
+\caption{Before (left) and after (right) running the centroid algorithm on the WCS coordinate file narrowcat\_xy\_wcs.coo}
+\label{fig:centroid}
+\end{figure}
+
+\begin{enumerate}
+\item Astrodrizzled without tweakreg. Opened Ureka terminal and cd to Data/1, then: \\
+\path{--> import drizzlepac} \\
+\path{--> from drizzlepac import tweakreg} \\
+\path{--> from drizzlepac import astrodrizzle} \\
+\path{--> from drizzlepac import tweakback} \\
+\path{--> unlearn tweakreg force=yes}\\
+\path{--> unlearn astrodrizzle force=yes}\\
+\path{--> unlearn tweakback force=yes}\\
+\path{--> unlearn imagefindpars force=yes}\\ 
+\path{--> astrodrizzle.AstroDrizzle('f128n_pos1-0?_flt.fits',output='f128n_pos1_notweak',driz_sep_bits='64,32',driz_cr_corr=yes,final_bits='64,32',final_wcs=yes,final_scale=0.0386,final_rot=0.)}
+\item Hand picked sources and exported to WCS using Format > xy and Coordinate System > WCS > fk5. See Fig.~\ref{fig:catalog} to see the hand picked catalog I used loaded on top of {\bf f128n\_pos1\_drz.fits}. I named the catalog {\bf narrowcat\_xy\_wcs.coo} to specify the format and coordinate system. 
+\item Ran centroid algorithm. The results are in Fig.~\ref{fig:centroid} \\
+\path{--> teal phot} then \\
+{\bf  image=f128n\_pos1\_drz.fits[sci,1], coords = narrowcat\_xy\_wcs.coo, output = narrow\_wcs.mag, Interactive = No} 
+\item Loaded {\bf f128n\_pos1\_drz.fits[sci,1]} in ds9, then loaded {\bf narrowcat\_xy\_wcs.coo}. Exported to pixel space a.k.a. image coordinates instead of WCS using the name {\bf narrowcat\_image.coo} (this is the coordinate file in image space for Hubble's drizzled image). 
+\item Ran centroid algorithm on the image space version: \\
+\path{--> teal phot} with \\
+{\bf Interactive = No, coords = narrowcat\_image.coo, image=f128n\_pos1\_drz.fits[sci,1], output = narrow\_image.mag} 
+\item Loaded {\bf f128n\_pos1-01\_flt.fits[sci,1]} in ds9, then loaded {\bf narrowcat\_xy\_wcs.coo}. Because I used WCS, the catalog was right on top of the sources. Exported it as {\bf narrowcat1\_image.coo} to image coordinates using Format > xy and Coordinate System > image. 
+\item Ran centroid algorithm using {\bf  image=f128n\_pos1-01\_flt.fits[sci,1], coords = narrowcat1\_image.coo, output = narrow1\_image.mag, Interactive = No} 
+\item Loaded {\bf f128n\_pos1-02\_flt.fits[sci,1]} in ds9, then loaded {\bf narrowcat\_xy\_wcs.coo}. Exported it as {\bf narrowcat2\_image.coo} to image coordinates. 
+\item Did the same for pos1-03 and pos1-04. 
+\item Prepared for tweakreg: \\
+\path{txdump narrow_image.mag xcen,ycen yes > narrow_image_tweak.coo} \\
+\path{txdump narrow1_image.mag xcen,ycen yes > narrow1_image_tweak.coo} \\
+\path{txdump narrow2_image.mag xcen,ycen yes > narrow2_image_tweak.coo} \\
+\path{txdump narrow3_image.mag xcen,ycen yes > narrow3_image_tweak.coo} \\
+\path{txdump narrow4_image.mag xcen,ycen yes > narrow4_image_tweak.coo} \\
+\item Used printf to create a catfile: \\
+\path{--> printf 'f128n_pos1_drz.fits[sci,1] narrow_image_tweak.coo \n f128n_pos1-01_flt.fits[sci,1] narrow1_image_tweak.coo \n f128n_pos1-02_flt.fits[sci,1] narrow2_image_tweak.coo \n f128n_pos1-03_flt.fits[sci,1] narrow3_image_tweak.coo \n f128n_pos1-04_flt.fits[sci,1] narrow4_image_tweak.coo \n' > narrowcat_xy_catfile.list}
+
+\begin{figure}
+\centering
+\includegraphics[width=1\columnwidth]{mycat_f128n_pos1results}
+\caption{Results for narrow filter (f128n\_pos1) using hand selected catalog (RHS) compared to image produced without using tweakreg (LHS).}
+\label{fig:mycat}
+\end{figure}
+
+\item Tweakreg with new coordinate files: \\
+\path{--> tweakreg.TweakReg('f128n_pos1_drz.fits, f128n_pos1-01_flt.fits, f128n_pos1-02_flt.fits, f128n_pos1-03_flt.fits, f128n_pos1-04_flt.fits', writecat=False, catfile='narrowcat_xy_catfile.list', residplot='NoPlot', see2dplot=no,updatehdr=True,wcsname='TWEAK_128MY')}
+\item Tweakback with new coordinate files, using Hubble's drizzle as a reference: \\
+At first I thought this meant \\
+tweakback.TweakBack('f128n\_pos1\_notweak\_drz\_sci.fits','f128n\_pos1\_drz.fits,f128n\_pos-0?\_flt.fits',verbose=True). \\
+This is wrong for two reasons: 1. apparently TweakBack needs to be all lower case, unlike AstroDrizzle; 2. The notweak version should not be used as the reference, and that's what this red command tells it to do. The red command actually doesn't go through because it can't tweakback to a drizzled image, so it doesn't understand. Instead I used: \\
+\path{--> tweakback.tweakback('f128n_pos1_drz.fits','f128n_pos1-0?_flt.fits',verbose=True)}\\
+which did successfully compile with \texttt{WCSNAME = TWEAK\_128MY\_1}.
+\item Redrizzle the {\bf flt fits} files:\\
+\path{-->astrodrizzle.AstroDrizzle('f128n_pos1-0?_flt.fits',output='f128n_pos1_mycat',driz_sep_bits='64,32',driz_cr_corr=yes,final_bits='64,32',final_wcs=yes,final_scale=0.0386,final_rot=0.)}
+\end{enumerate}
+
+Then renamed a few images for clarity:\\
+\path{imrename f110w_pos1_drz.fits f110w_pos1_drz_nasa.fits}\\
+\path{imrename f128n_pos1_drz.fits f128n_pos1_drz_nasa.fits}\\
+\path{imrename f128n_pos1_mycat_drz_sci.fits f128n_pos1_drz_sci.fits}\\
+\path{imrename f128n_pos1_mycat_drz_wht.fits f128n_pos1_drz_wht.fits}
+
+\begin{figure}
+\centering
+\includegraphics[width=1\columnwidth]{narrowdrizzle}
+\caption{Results looking good. {\bf f128n\_pos1\_mycat\_drz\_sci.fits} (LHS) and \bf{f128n\_pos1\_mycat\_drz\_wht.fits (RHS).}}
+\label{fig:mycat}
+\end{figure}
+
+\begin{table}
+\caption{Files in this step that have both narrow and wide analogs}
+\begin{center}
+\begin{tabular}{|c|c|c|} \hline
+File name for Wide Filter & File name for Narrow Filter & Description \\ \hline \hline
+\sout{f110w\_pos1\_drz.fits} & \sout{f128n\_pos1\_drz.fits} & NASA's drizzled wide/narrow \\
+\textcolor{blue}{f110w\_pos1\_drz\_nasa.fits} & \textcolor{blue}{f128n\_pos1\_drz\_nasa.fits} & filter image \\ \hline
+shift\_110\_pos1.txt & shift\_128\_pos1.txt & Text file output of tweakreg \\ 
+& & step. Contents are replaced \\ 
+& & every time tweakreg is run. \\ \hline
+f110w\_pos1\_drz\_sci.fits & \sout{f128n\_pos1\_mycat\_drz\_sci.fits} & Final product of this step. \\
+& \textcolor{blue}{f128n\_pos1\_drz\_sci.fits} & \\ \hline
+f110w\_pos1\_drz\_wht.fits & \sout{f128n\_pos1\_mycat\_drz\_wht.fits} & Astrodrizzle output containing \\ 
+& \textcolor{blue}{f128n\_pos1\_drz\_wht.fits} & the error and poor data \\ 
+& & quality information. \\ \hline 
+\end{tabular}
+\end{center}
+\label{table:step1}
+\end{table}
+
+\begin{table}
+\caption{Files in this step that have no wide filter counterpart}
+\begin{center}
+\begin{tabular}{|c|c|} \hline
+File name for Narrow Filter & Description \\ \hline \hline
+\sout{narrowcat\_xy\_wcs.coo} & Narrow filter hand-picked \\
+\textcolor{blue}{narrow\_pos1\_xy\_wcs.coo} & catalog of coordinates,\\
+ & with XY format and \\
+ & WCS coordinate system.\\ \hline
+\sout{narrow\_wcs.mag} & Output of the centroid \\
+\textcolor{blue}{narrow\_pos1\_wcs.mag} & algorithm run on \\
+ & the above WCS coo file.\\ \hline 
+\sout{narrowcat\_image.coo} & Narrow filter catalog in \\
+\textcolor{blue}{narrow\_pos1\_image.coo} & {\bf f128n\_pos1\_drz.fits}'s \\
+ & image coordinates \\ \hline
+\sout{narrowcat1\_image.coo} & Narrow filter catalog in \\
+\textcolor{blue}{narrow\_pos1-01\_image.coo} &  {\bf f128n\_pos1-01\_flt.fits}'s \\
+& image coords (same for 2,3,4)\\ \hline
+\sout{narrow1\_image.mag} & Output of centroid algorithm. \\ 
+\textcolor{blue}{narrow\_pos1\_image.mag} & \\ \hline 
+\sout{narrowcat\_xy\_catfile.list} & The catalog file containing a \\ 
+\textcolor{blue}{narrow\_pos1\_xy\_catfile.list} &  list of the coordinate files. \\ \hline
+f128n\_pos1\_notweak & Astrodrizzle drizzled output for \\
+\_drz\_sci.fits & narrow filter with no tweakreg. \\ \hline
+\end{tabular}
+\end{center}
+\label{table:step1}
+\end{table}
+
+
+\begin{table}
+\caption{Files in this step that have no narrow filter counterpart}
+\begin{center}
+\begin{tabular}{|c|c|} \hline
+File name for Wide Filter & Description \\ \hline \hline
+f110w\_pos1-02\_flt\_ & ? \\ 
+catalog\_fit.match &  \\ \hline
+f110w\_pos1-02\_flt\_sci1 & Coordinate file for wide filter \\
+\_xy\_catalog.coo &  containing the red circles \\
+& (first round of selections). \\ \hline
+f110w\_pos1-02\_catalog\_fit.xyflt &  File for wide filter containing\\
+&  green circles (second round). \\ \hline
+\end{tabular}
+\end{center}
+\label{table:step1}
+\end{table}
+
+
+\newpage
+
+\section{Align the drizzled images with each other (pos 1)}
+\bigskip
+\bigskip
+\centerline{\textsc{\Large Attempt 1}}
+\bigskip
+{\large \bf Align the header WCS of the two filter images?}
+
+I need to use my own catalog for the narrow image in order to get enough sources, but the file has to be applicable to both the narrow and the wide in order to be effective for both. I made a reference file by exporting the coordinates in WCS FK5 to \path{reftest.ref} (I wasn't sure if it would work) and then running tweak: \\
+
+\path{--> tweakreg.TweakReg('f110w_pos1_drz_sci.fits', refimage='f128n_pos1_drz_sci.fits',refcat='reftest.ref',conv_width=5,threshold=4,shiftfile=True,outshifts='shift_110ref_pos1.txt',nclip=10,updatehdr=False)} \\
+
+I only got 37 matches this way, but I don't know how to increase them. I guess I could theoretically do the whole process over again and use a different catalog this time, but I feel like it would be a wild goose chase because I don't know what it is about my coordinates that I should change. The contents of my outshifts file also seem reasonable: \\
+
+f110w\_pos1\_drz\_sci.fits \ \  -0.621725 \  \-0.532027 \  \ 0.004903  \  \ 0.999969 \ \ 0.588607 \  \ 0.701925 \\
+
+So I continue, updating the header: \\
+
+\path{--> tweakreg.TweakReg('f110w_pos1_drz_sci.fits', refimage='f128n_pos1_drz_sci.fits',refcat='reftest.ref',conv_width=5,threshold=4,shiftfile=True,outshifts='shift_110ref_pos1.txt',nclip=10,updatehdr=True,wcsname='TWEAK_110DRZ')} \\
+
+\bigskip
+{\large \bf Propagate alignment back to the flat field files}
+
+I made a typo and did this. No idea if there are consequences.
+\textcolor{red}{\path{tweakback.tweakback('f110w_pos1_drz_sci.fits',input='f128n_pos1_0?_sci.fits',verbose=True)}} \\
+
+Correct code:\\
+\path{-->tweakback.tweakback('f110w_pos1_drz_sci.fits',input='f110w_pos1-0?_flt.fits',verbose=True)} 
+
+The above code didn't work with f128n instead of f110w. I figure this is because I altered the wide according to the narrow ref image, so I only need to tweakback f110w. 
+
+\bigskip
+{\bf \large Align the drizzled images in pixel space}
+
+According to Example 5, I have two options here, and the first one seems infinitely easier. The first thing to do is rename the files I'm messing with: \\
+
+\path{--> imrename f110w_pos1_drz_sci.fits f110w_pos1_drz_sci_v1.fits}\\
+\path{--> imrename f110w_pos1_drz_wht.fits f110w_pos1_drz_wht_v1.fits}\\
+
+Then I astrodrizzled using a reference image: \\
+
+\path{--> astrodrizzle.AstroDrizzle('f110w_pos1-0?_flt.fits',output='f110w_pos1',driz_sep_bits='64,32',driz_cr_corr=yes, final_bits='64,32',final_wcs=yes, final_refimage='f128n_pos1_drz_sci.fits')}
+
+So I can compare \path{f110w_pos1_drz_sci_v1.fits} (before) and \path{f110w_pos1_drz_sci.fits} (after). 
+
+\begin{figure}
+\centering
+\begin{minipage}[b]{.45\linewidth}
+\includegraphics[width=1\columnwidth]{beforepixel_redisnarrow}
+\caption{Wide filter pre pixel alignment ({\tt f110w\_pos1\_drz\_sci\_v1.fits}), red is narrow and green is wide}
+\label{fig:beforepixel}
+\includegraphics[width=1\columnwidth]{beforepixel_zoom}
+\caption{Wide filter pre-pixel alignment ({\tt f110w\_pos1\_drz\_sci\_v1.fits}), zoomed in}
+\label{fig:beforepixelzoom}
+\end{minipage}
+\quad
+\begin{minipage}[b]{.45\linewidth}
+\includegraphics[width=1\columnwidth]{afterpixel_redisnarrow}
+\caption{Wide filter post pixel alignment ({\tt f110w\_pos1\_drz\_sci.fits}), red is narrow and green is wide}
+\label{fig:afterpixel}
+\includegraphics[width=1\columnwidth]{afterpixel_zoom}
+\caption{Wide filter post-pixel alignment ({\tt f110w\_pos1\_drz\_sci.fits}), zoomed in}
+\label{fig:afterpixelzoom}
+\end{minipage}
+\end{figure}
+
+To be honest, the after image looks way worse. I bet this has to do with the number of sources that I was able to get for my reference catalog in the previous step. \\
+
+Also, why are they angled this way? The Hubble drizzled images are square, not diamond. Answer: there is an alignment step in astrodrizzle that I missed. \\
+
+\newpage
+\centerline{\sc \Large Attempt 2}
+\bigskip
+{\large \bf Align the header WCS of the two filter images?}
+
+To get a higher number of sources to get better pixel alignment, I exported regions in the image spaces of each of the drizzled images. I loaded \path{narrow_xy_wcs.coo} onto \path{f128n_pos1_drz_sci.fits} and \path{f110w_pos1_drz_sci.fits}, and then exported the regions in each respective image space as \path{narrowdrz.coo} and \path{widedrz.coo}. Then for centroid I used \\
+\path{--> teal phot} \\ 
+with \path{f110w_pos1_drz_sci.fits} + \path{widedrz.coo} + \path{widedrz.mag} and \\
+\path{f128n_pos1_drz_sci.fits} + \path{narrowdrz.coo} + \path{narrowdrz.mag}. 
+
+Then I made a catfile:\\
+\path{--> txdump narrowdrz.mag xcen,ycen yes > narrowdrz_tweak.coo} \\
+\path{--> txdump widedrz.mag xcen,ycen yes > widedrz_tweak.coo} \\
+
+\path{--> printf 'f128n_pos1_drz_sci.fits narrowdrz_tweak.coo \n f110w_pos1_drz_sci.fits widedrz_tweak.coo \n' > drz_xy_catfile.ref}
+
+\textcolor{red}{\path{tweakreg.TweakReg('f110w_pos1_drz_sci.fits',refimage='f128n_pos1_drz_sci.fits',refcat='drz_xy_catfile.ref', conv_width=5,threshold=4,shiftfile=True,outshifts='drz_ref_pos1.txt',nclip=10,updatehdr=False}}
+
+This didn't compile. \frownie
+
+Ok found the reason. (Well, Alison told me the reason.) The correct code is:\\
+
+\path{--> tweakreg.TweakReg('f128n_pos1_drz_sci.fits,f110w_pos1_drz_sci.fits',catfile='drz_xy_catfile.ref',conv_width=5,threshold=4,shiftfile=True,outshifts='drz_ref_pos1.txt',nclip=10,updatehdr=False)}\\
+
+Before I ran this, I used imrename to save the previous \path{f110w_pos1_drz_sci.fits} as \path{f110w_pos1_drz_sci_v2.fits}, because this tweakreg code would have erased that trial. It turns out that v2 is pretty misaligned as well. Honestly, I don't think it is possible to get a better alignment than the original (currently saved as v1), which did not use tweakreg in round 2 before astrodrizzle. I hope that this will remain true for the other trials. For now, I will astrodrizzle with \path{f110w_pos1_drz_sci_v1.fits} and \path{f128n_pos1_drz_sci.fits}, because they are the most well-aligned of all for this particular fileset. \\
+
+After staring at the drizzled outputs of attempts 1 and 2, I realized they are identical. This makes no sense to me, considering that the first attempt had no coordinate file, and the second had a specified coordinate file. The only things in common were the threshold and conv\_width parameters. Honestly, I have no idea why this is the case, and I'm just kind of relieved that the first output was so well aligned. Let's see how the second position turns out... \\
+
+
+
+
+\begin{table}
+\caption{List of files in Step 2. Turned out \texttt{f110w\_pos1\_drz\_sci\_notweak.fits} was the best, most well-aligned option for this position.}
+\begin{tabular}{|c|c|c|} \hline
+Filename (wide) & Filename (narrow) & Description \\ \hline \hline
+\sout{f110w\_pos1\_drz\_sci.fits} & N/A & The output of Astrodrizzle  \\
+\sout{f110w\_pos1\_drz\_sci\_v1.fits} &  & before attempts to align \\
+\textcolor{Green}{f110w\_pos1\_drz\_sci\_notweak.fits} & & the WCS of the two \\ \hline
+\sout{f110w\_pos1\_drz\_sci.fits} & N/A & Output of Attempt 1; \\
+\sout{f110w\_pos1\_drz\_sci\_v2.fits} & & used the 37 matches  \\ 
+\textcolor{blue}{f110w\_pos1\_drz\_sci\_tweak.fits}  & & \\ \hline
+\sout{f110w\_pos1\_drz\_sci.fits} & N/A & Output of Attempt 2; used \\
+\textcolor{blue}{f110w\_pos1\_drz\_sci\_handpicked.fits} &  & handpicked source catalog \\ \hline
+\end{tabular}
+\label{table:step2}
+\end{table}
+
+\newpage
+\begin{framed}
+\centerline{\sc \Large Code: Rough Draft}
+\path{> ds9 &}\\
+\path{> cd data/iraf}\\
+\path{> pyraf} \\
+\path{--> cd  ~/Documents/Thesis/Summer/Data/}\textcolor{green}{\path{1}} \\ \\
+\path{--> import drizzlepac} \\
+\path{--> from drizzlepac import tweakreg} \\
+\path{--> from drizzlepac import astrodrizzle} \\
+\path{--> from drizzlepac import tweakback} \\
+\path{--> unlearn tweakreg force=yes}\\
+\path{--> unlearn astrodrizzle force=yes}\\
+\path{--> unlearn tweakback force=yes}\\
+\path{--> unlearn imagefindpars force=yes}\\ \\ \\
+%%%%%%%WIDE
+\centerline{\sc Wide filter}\\
+\path{--> display} \textcolor{green}{\path{f110w_pos1-01_flt}\path{.fits[1]}} \\
+\path{--> imexam} \\
+\path{--> tweakreg.TweakReg('f110w_}\textcolor{green}{\path{pos1}}\path{-0?_flt.fits', conv_width=}\textcolor{green}{\path{3.7}}\path{, threshold=10, shiftfile=True, outshifts='shift_110_}\textcolor{green}{\path{pos1}}\path{.txt',updatehdr=False)} \\ \\
+\path{--> tproject f110w_}\textcolor{green}{\path{pos1}}\path{-02_flt_catalog_fit.match f110w_}\textcolor{green}{\path{pos1}}\path{-02_catalog_fit.xyflt "c11,c12"}\\ \\
+\path{--> epar display} \ \ \ then click "no" on zrange so you can set z1 and z2:\\ 
+\path{--> display f110w_}\textcolor{green}{\path{pos1-02}}\path{_flt.fits[sci] 1 zsc- z1=2 z2=25}\\ 
+\path{--> tvmark 1 f110w_}\textcolor{green}{\path{pos1-02}}\path{_flt_sci1_xy_catalog.coo mark=circle radii=5 color=204} \\ 
+\path{--> tvmark 1 f110w_}\textcolor{green}{\path{pos1-02}}\path{_catalog_fit.xyflt mark=circle radii=7 color=205}\\ \\
+\path{--> tweakreg.TweakReg('f110w_}\textcolor{green}{\path{pos1}}\path{-0?_flt.fits', conv_width=3.7, threshold=10, shiftfile=True, outshifts='shift_110_}\textcolor{green}{\path{pos1}}\path{.txt',updatehdr=True,wcsname=}\textcolor{green}{\path{`TWEAK_110')}} \\ \\
+\path{--> astrodrizzle.AstroDrizzle('f110w_}\textcolor{green}{\path{pos1}}\path{-0?_flt.fits', output='f110w_}\textcolor{green}{\path{pos1}}\path{',driz_sep_bits='64,32', driz_cr_corr=yes,final_bits='64,32',final_wcs=yes,final_scale=}\textcolor{green}{\path{0.12}}\path{,final_rot=0.)} \\ \\
+\path{--> epar display} then set zrange = YES.  \\
+\path{--> display f110w_}\textcolor{green}{\path{pos1}}\path{_drz_sci.fits 1} \\
+\path{--> displ f110w_}\textcolor{green}{\path{pos1}}\path{_drz_wht.fits 2 fill+} \\ \\ \\
+%%%%%%%%NARROW
+\centerline{\sc Narrow filter:}\\
+\path{--> astrodrizzle.AstroDrizzle('f128n_}\textcolor{green}{\path{pos1}}\path{-0?_flt.fits',output='f128n_}\textcolor{green}{\path{pos1}}\path{_notweak',driz_sep_bits='64,32',driz_cr_corr=yes,final_bits='64,32',final_wcs=yes,final_scale=}\textcolor{green}{\path{0.12}}\path{,final_rot=0.)} \\ \\
+Hand pick sources from drz, and export to WCS using Format > xy and Coordinate System > WCS > fk5 and named \textcolor{green}{\bf narrow\_pos1\_xy\_wcs.coo}. \\ 
+\path{--> teal phot} for centroid algorithm on WCS regions. \\ \\
+Load regions onto drz again and export to pixel space using Format > xy and Coordinate System > Image. Repeat for flt files. \\
+\path{--> teal phot} for centroid algorithm on pixel space regions. \\ \\
+\path{--> txdump }\textcolor{green}{\path{narrow_pos1_image.mag}}\path{ xcen,ycen yes > }\textcolor{green}{\path{f128n_pos1_image_tweak.coo}} \\
+\path{--> txdump }\textcolor{green}{\path{narrow_pos1-01_image.mag}}\path{ xcen,ycen yes > }\textcolor{green}{\path{f128n_pos1-01_image_tweak.coo}} \\
+\path{--> txdump }\textcolor{green}{\path{f128n_pos1-02_image.mag}}\path{ xcen,ycen yes > }\textcolor{green}{\path{f128n_pos1-02_image_tweak.coo}} \\
+\path{--> txdump }\textcolor{green}{\path{f128n_pos1-03_image.mag}}\path{ xcen,ycen yes > }\textcolor{green}{\path{f128n_pos1-03_image_tweak.coo}} \\
+\path{--> txdump }\textcolor{green}{\path{f128n_pos1-04_image.mag}}\path{ xcen,ycen yes > }\textcolor{green}{\path{f128n_pos1-04_image_tweak.coo}} \\ \\
+\path{--> printf 'f128n_}\textcolor{green}{\path{pos1}}\path{_drz.fits[sci,1] }\textcolor{green}{\path{f128n_pos1_image_tweak.coo}}\path{ \n f128n_}\textcolor{green}{\path{pos1}}\path{-01_flt.fits[sci,1] }\textcolor{green}{\path{f128n_pos1-01_image_tweak.coo}}\path{ \n f128n_}\textcolor{green}{\path{pos1}}\path{-02_flt.fits[sci,1] }\textcolor{green}{\path{f128n_pos1-02_image_tweak.coo}}\path{ \n f128n_}\textcolor{green}{\path{pos1}}\path{-03_flt.fits[sci,1] }\textcolor{green}{\path{f128n_pos1-03_image_tweak.coo}}\path{ \n f128n_}\textcolor{green}{\path{pos1}}\path{-04_flt.fits[sci,1] }\textcolor{green}{\path{f128n_pos1-04_image_tweak.coo}}\path{ \n' > }\textcolor{green}{\path{f128n_pos1_xy_catfile.list}} \\ \\
+\path{--> tweakreg.TweakReg('f128n_}\textcolor{green}{\path{pos1}}\path{_drz.fits, f128n_}\textcolor{green}{\path{pos1}}\path{-01_flt.fits, f128n_}\textcolor{green}{\path{pos1}}\path{-02_flt.fits, f128n_}\textcolor{green}{\path{pos1}}\path{-03_flt.fits, f128n_}\textcolor{green}{\path{pos1}}\path{-04_flt.fits', writecat=False, catfile='}\textcolor{green}{\path{f128n_pos1_xy_catfile.list}}\path{', residplot='NoPlot', see2dplot=no,updatehdr=True,wcsname='}\textcolor{green}{\path{TWEAK_128')}} \\ \\
+\path{--> tweakback.tweakback('f128n_}\textcolor{green}{\path{pos1}}\path{_drz.fits','f128n_}\textcolor{green}{\path{pos1}}\path{-0?_flt.fits',verbose=True)}\\ \\
+\path{-->astrodrizzle.AstroDrizzle('f128n_}\textcolor{green}{\path{pos1}}\path{-0?_flt.fits',output='f128n_}\textcolor{green}{\path{pos1}}\path{',driz_sep_bits='64,32',driz_cr_corr=yes,final_bits='64,32',final_wcs=yes,final_scale=}\textcolor{green}{\path{0.12}}\path{,final_rot=0.)} \\ \\ \\
+%%%%%%%%BOTH
+\centerline{\sc Align WCS of narrow and wide (unsure)}
+Create a catfile containing the .coo files for the narrow and wide drz.fits files, centroid applied.\\
+\path{--> tweakreg.TweakReg('f128n_pos1_drz_sci.fits,f110w_pos1_drz_sci.fits',catfile='drz_xy_catfile.ref',conv_width=5,threshold=4,shiftfile=True,outshifts='drz_ref_pos1.txt',nclip=10,updatehdr=False)}
+\end{framed}
+
+Errors I encountered when trying to do the framed steps: 
+\begin{itemize}
+\item Error: (727, "Attempt to clobber a file which is already open (f128n\_pos1.coo)") -- this means that you accidentally called your .mag file the same thing as your .coo file (including extension) 
+\end{itemize}
+
+\section{Outputs} 
+\subsection{Position 1}
+
+\centerline{\sc Wide Filter} 
+FWHM of Point Spread Function? Using imexam on each flat-field image, I got the results in Table~\ref{table:wimexam1}. 
+
+\begin{table}
+\caption{PSF values for wide filter, position 1}
+\begin{center}
+\begin{tabular}{|c|c|c|c|c|} \hline
+Exposure & source \# & value 1 & value 2 & value 3 \\ \hline
+f110w\_pos1-01\_flt.fits & 1 & 2.27 & 2.41 & 2.33  \\
+ & 2 & 2.31 & 1.90 & 1.69 \\
+ & 3 & 2.49 & 2.38 & 2.36 \\ \hline
+Average: & & 2.36 & 2.23 & 2.13 \\ 
+conv\_width: & & 4.72 & 4.46 & 4.26 \\
+Parameter I used: & \sout{4.48} & & & \\ 
+& 3.7 & & & \\ \hline 
+\end{tabular}
+\end{center}
+\label{table:wimexam1}
+\end{table}
+
+\bigskip
+
+\centerline{\sc Narrow Filter}
+
+
+\begin{enumerate}
+\item Running centroid ("teal phot") on the NASA drz's WCS coordinate file: image = f128n\_pos1\_drz.fits[sci], coords = f128n\_pos1\_xy\_wcs.coo, output = f128n\_pos1\_drz\_wcs.mag
+\item Running centroid on pos1-01's coordinate file: image=f128n\_pos1-01\_flt.fits[sci], coords= f128n\_pos1-01\_xy\_image.coo, output=f128n\_pos1-01\_image.mag
+\item The same as above for 02, 03, 04. 
+\item Running centroid on the NASA drz's image file: 
+\end{enumerate}
+
+\begin{oframed}
+\centerline{\sc The Chronicle of the Uncentered Sources}
+Oh God. Centroid does \textit{NOTHING}. Oh my God, this probably explains my alignment problem. Figure~\ref{fig:centroid} just shows differently styled circles but everything is centered at the same damn location. How the hell did I never notice this?! The \textit{mag} files are the corrected ones because they're the output. The damn coo files are just the original file in different coordinate systems. Does txdump put the .mag correction into the coo files? \\
+Now I have to figure out how to make the centroid work. Would doing something as simple as changing .mag to .coo in teal phot work? ... No, it doesn't, and when I open it in MacVim I learn that it's not a damn coordinate file. It contains a lot more info than just coordinates. I guess it could be the case that I wasn't giving the right inputs when it prompted me? I'll try changing them... Ok, so no matter what I change my answers to, the output remains the same. So I guess there is something more deeply wrong than I had hoped. This blows. \\ 
+Okay, here's something. The centroid parameters actually aren't set by the prompts; they're set by PSET centerpars within teal phot. And the parameter cbox, which is the box that is used to calculate the center, is recommended to be 2.5-4.0 $\times$ the FWHM of the PSF. And the FWHM of the PSF is about 2, meaning this number should be between 5 and 8 or so. I could fiddle with it... it's set to 5 by default. Honestly, that value seems fine. I think the problem is still somewhere else... But where? Maybe maxshift... it's the maximum shift allowed. I'm going to set it higher, because I was definitely off by more than 1 pixel for some of these things. This could be it. ...Nope, that's not it. Changing maxshift has no visible effect on the locations of the centroids... It must be something else. Maybe the problem is with the sources, not the centroid algorithm. Maybe the problem is that I'm choosing things that aren't sources, and finding the centroid of them leads to bad results. Maybe I just need to delete those and keep only the ones that look centered. No, that's not the case -- even normal looking sources are offset by the same distance as before the algorithm...\\
+
+\centerline{A Few Wild Goose Chases Later...}
+Suspicions confirmed: I looked at the coordinate files before and after centroid, and they are identical. I don't think anything is moving at all. Plus, something scarier is that when I open a txdump'ed file, it's just a list of identical coordinates... Ayyy \\
+
+\centerline{\it Found the problem.} 
+
+Okay so the problem was a million things. First of all, the txdump IS the step that takes the xcenter and ycenter solutions from the mag file, which is where the solutions are output to. Running teal phot's centroid does {\it NOT} change the input .coo file! txdump has to be used, and it will output to the coordinate file specified after the > sign. Furthermore, this does {\it NOT} work in WCS coordinates for whatever reason. Both the .mag file and the .coo file must be in image coordinates in order for this to work. \\
+
+\centerline{\sc The Saga Continues...}
+\end{oframed}
+
+\begin{oframed}
+\centerline{\sc The Chronicle of the List of Meaningless Repeated Numbers}
+I just realized txdump returns a list of 200 or so copies of one single coordinate location as the centroid for each of the 200-some sources. No idea why it does this. At what point does this happen? The coordinates that I export from ds9 are all different, but the output of the centroid algorithm as reported in the .mag file has listed the centroid at (11.216, 43.389) for every single freaking star. What?? Why??? When I txdump this info into a coordinate file and load it in ds9, nothing shows up... which makes sense, because the centroid process appears to be turning all of the sources into one single coordinate...? Something is definitely going wrong in the \path{teal phot} step. Okay, so I used MacVim to load the .mag file from a centroid algorithm previously applied to an image coordinates file. It worked fine! So what the hell is going on with the WCS file? Maybe centroid doesn't work on WCS?... \\
+Wow, that is exactly the problem!! Congrats Liz! $\heartsuit \heartsuit \heartsuit$
+\end{oframed}
+
+\begin{oframed}
+\centerline{\sc The Chronicle of the Bad Coordinate Mapping}
+So I realized that the reason I sometimes can't load .coo files onto images in DS9 is for a far stupider reason than I expected. Quite simply, I'm exporting them as one thing and then loading them as another. Instead of naming things \path{f128n_pos1_wcs.coo} or \path{f128n_pos1_image.coo}, I'm going to save all of the settings inside of the name: \path{f128n_pos1_ds9_wcs.coo} or \path{f128n_pos1_xy_image.coo}. This way, I know whether I saved the file in XY format or in ds9 format. I'm not sure which format is best, or if it matters, but currently I have four files, two in each format, one for each coordinate system. After I make a bunch more image coordinate files, two for each flt, I'm going to try astrodrizzling in both formats, just to see which one works. \\
+As I'm saving and loading these files, I'm noticing that the ds9 format seems to override a coordinate system when I'm loading it. This makes me think that ds9 requires WCS coordinates and so my image coordinates can only be in XY, like I had been doing this whole time. \\
+
+\textit{Confirmed:} coordinate files consistently load just so long as I'm careful about specifying the format. I'm returning all of my image coordinate files to the convention that I was using earlier (no xy in the name) and deleting all of the ds9 files. No change to procedure necessary
+\end{oframed}
+\bigskip
+\centerline{\Huge Again, from the top:}
+
+\newpage
+\begin{shaded}
+\centerline{\sc \Large Code: Final Draft}
+\path{> ds9 &}\\
+\path{> cd data/iraf}\\
+\path{> pyraf} \\
+\path{--> cd  ~/Documents/Thesis/Summer/Data/}\textcolor{red}{\path{1}} \\ 
+\path{--> import drizzlepac} \\
+\path{--> from drizzlepac import tweakreg} \\
+\path{--> from drizzlepac import astrodrizzle} \\
+\path{--> from drizzlepac import tweakback} \\
+\path{--> unlearn tweakreg force=yes}\\
+\path{--> unlearn astrodrizzle force=yes}\\
+\path{--> unlearn tweakback force=yes}\\
+\path{--> unlearn imagefindpars force=yes}\\
+%%%%%%%WIDE
+\centerline{\noindent\rule{10cm}{0.4pt}}\\
+\centerline{\sc Wide filter}\\
+\path{--> display} \textcolor{red}{\path{f110w_pos1-01_flt}\path{.fits[1]}} \\
+\path{--> imexam} \\ \\
+\path{--> tweakreg.TweakReg('f110w_}\textcolor{red}{\path{pos1}}\path{-0?_flt.fits', conv_width=}\textcolor{red}{\path{3.7}}\path{, threshold=10, shiftfile=True, outshifts='shift_110_}\textcolor{red}{\path{pos1}}\path{.txt',updatehdr=False)} \\
+\path{--> tproject f110w_}\textcolor{red}{\path{pos1}}\path{-02_flt_catalog_fit.match f110w_}\textcolor{red}{\path{pos1}}\path{-02_catalog_fit.xyflt "c11,c12"}\\ 
+\path{--> epar display} \ \ \ Click NO on zrange\\ 
+\path{--> display f110w_}\textcolor{red}{\path{pos1-02}}\path{_flt.fits[sci] 1 zsc- z1=2 z2=25}\\ 
+\path{--> tvmark 1 f110w_}\textcolor{red}{\path{pos1-02}}\path{_flt_sci1_xy_catalog.coo mark=circle radii=5 color=204} \\ 
+\path{--> tvmark 1 f110w_}\textcolor{red}{\path{pos1-02}}\path{_catalog_fit.xyflt mark=circle radii=7 color=205}\\ \\
+\path{--> tweakreg.TweakReg('f110w_}\textcolor{red}{\path{pos1}}\path{-0?_flt.fits', conv_width=3.7, threshold=10, shiftfile=True, outshifts='shift_110_}\textcolor{red}{\path{pos1}}\path{.txt',updatehdr=True,wcsname=}\textcolor{red}{\path{`TWEAK_110')}} \\ 
+\path{--> astrodrizzle.AstroDrizzle('f110w_}\textcolor{red}{\path{pos1}}\path{-0?_flt.fits', output='f110w_}\textcolor{red}{\path{pos1}}\path{',driz_sep_bits='64,32', driz_cr_corr=yes,final_bits='64,32',final_wcs=yes,final_scale=}\textcolor{red}{\path{0.12}}\path{,final_rot=0.)} \\  \\
+\path{--> epar display} \ \ \ Set zrange = YES.  \\
+\path{--> display f110w_}\textcolor{red}{\path{pos1}}\path{_drz_sci.fits 1} \\
+\path{--> displ f110w_}\textcolor{red}{\path{pos1}}\path{_drz_wht.fits 2 fill+} \\ 
+%%%%%%%%NARROW
+\centerline{\noindent\rule{10cm}{0.4pt}}\\
+\centerline{\sc Narrow filter} \\ \\
+$\bigstar$ Astrodrizzle on unaligned flt files \\
+\path{--> astrodrizzle.AstroDrizzle('f128n_}\textcolor{red}{\path{pos1}}\path{-0?_flt.fits',output='f128n_}\textcolor{red}{\path{pos1}}\path{_notweak',driz_sep_bits='64,32',driz_cr_corr=yes,final_bits='64,32',final_wcs=yes,final_scale=}\textcolor{red}{\path{0.12}}\path{,final_rot=0.)} \\ \\
+$\bigstar$ Hand pick sources from drz, and export to WCS using Format > xy and Coordinate System > WCS > fk5 and named {\bf f128n\_\textcolor{red}{pos1}\_wcs.coo}. \\ \\
+$\bigstar$ \sout{Apply centroid algorithm to WCS regions} \textit{DANGER!!! Do not do this!} \\ \\
+$\bigstar$ Convert Coordinate Files to Pixel Space of Each File (drz and flt) \\
+Export regions from drz again, except this time as pixel space coordinates using using Format > xy and Coordinate System > Image. Load WCS drz regions onto flt files and export to pixel space coordinates the same way. \\ \\
+$\bigstar$ Apply centroid algorithm... \\
+$\RHD \RHD \RHD$ to flt position 1 pixel space regions: \\
+\path{--> teal phot}  \\
+image = { f128n\_\textcolor{red}{pos1}-01\_flt.fits[sci]} \\ 
+coords = {f128n\_\textcolor{red}{pos1}-01\_image.coo} \\
+output = {f128n\_\textcolor{red}{pos1}-01\_image.mag} \\
+\textit{Press enter a bunch of times, then open the output file in Macvim and make damn sure that all of the centroid coordinates are a) different and b) reasonable.}\\ 
+\path{--> txdump }\textcolor{red}{\path{f128n_pos1-01_image.mag}}\path{ xcen,ycen yes > }\textcolor{red}{\path{f128n_pos1-01_image.coo}} \\ 
+\textit{This txdump step replaces the input coordinate file with a file of the same name that now contains the updated coordinates. To make sure that it's working properly, name the output coordinate file something different and compare it side-by-side to the input coordinates.} \\
+$\RHD \RHD \RHD$ to flt position 2 pixel space regions: \\
+\path{--> teal phot}  \\ 
+\path{--> txdump }\textcolor{red}{\path{f128n_pos1-02_image.mag}}\path{ xcen,ycen yes > }\textcolor{red}{\path{f128n_pos1-02_image.coo}} \\ 
+$\RHD \RHD \RHD$ to flt position 3 pixel space regions: \\
+\path{--> teal phot}  \\
+\path{--> txdump }\textcolor{red}{\path{f128n_pos1-03_image.mag}}\path{ xcen,ycen yes > }\textcolor{red}{\path{f128n_pos1-03_image.coo}} \\ 
+$\RHD \RHD \RHD$ to flt position 4 pixel space regions: \\
+\path{--> teal phot}  \\ 
+\path{--> txdump }\textcolor{red}{\path{f128n_pos1-04_image.mag}}\path{ xcen,ycen yes > }\textcolor{red}{\path{f128n_pos1-04_image.coo}} \\ \\
+$\star$ Check: Open the .mag and .coo files in a text editor to make sure that a) the .mag coordinates are reasonable values; b) they are all different (you didn't accidentally use WCS coordinates); c) the .mag files are different from the original .coo files (centroid is doing something) \\ \\
+$\bigstar$ Tweak using these coordinates: \\
+\path{--> printf 'f128n_}\textcolor{red}{\path{pos1}}\path{_drz.fits[sci,1] }\textcolor{red}{\path{f128n_pos1_image.coo}}\path{ \n f128n_}\textcolor{red}{\path{pos1}}\path{-01_flt.fits[sci,1] }\textcolor{red}{\path{f128n_pos1-01_image.coo}}\path{ \n f128n_}\textcolor{red}{\path{pos1}}\path{-02_flt.fits[sci,1] }\textcolor{red}{\path{f128n_pos1-02_image.coo}}\path{ \n f128n_}\textcolor{red}{\path{pos1}}\path{-03_flt.fits[sci,1] }\textcolor{red}{\path{f128n_pos1-03_image.coo}}\path{ \n f128n_}\textcolor{red}{\path{pos1}}\path{-04_flt.fits[sci,1] }\textcolor{red}{\path{f128n_pos1-04_image.coo}}\path{ \n' > }\textcolor{red}{\path{f128n_pos1_catfile.list}} \\ 
+"Printf" means "print to file"... nothing special \\ 
+$\star$ Check: Open (vim) \path{f128n_pos1_catfile.list} to make sure everything made it  \\ \\
+\path{--> tweakreg.TweakReg('f128n_}\textcolor{red}{\path{pos1}}\path{_drz.fits, f128n_}\textcolor{red}{\path{pos1}}\path{-01_flt.fits, f128n_}\textcolor{red}{\path{pos1}}\path{-02_flt.fits, f128n_}\textcolor{red}{\path{pos1}}\path{-03_flt.fits, f128n_}\textcolor{red}{\path{pos1}}\path{-04_flt.fits', writecat=False, catfile='}\textcolor{red}{\path{f128n_pos1_catfile.list}}\path{', residplot='NoPlot', see2dplot=no,updatehdr=True,wcsname='}\textcolor{red}{\path{TWEAK_128'}}\path{)} \\ \\
+$\star$ Troubleshoot: If you get a low match error, check the contents of your coordinate files. Also, the wcsname does not matter at all. \\ \\
+\path{--> tweakback.tweakback('f128n_}\textcolor{red}{\path{pos1}}\path{_drz.fits','f128n_}\textcolor{red}{\path{pos1}}\path{-0?_flt.fits',verbose=True)}\\ \\
+$\bigstar$ Astrodrizzle with the new coordinates:\\
+\path{-->astrodrizzle.AstroDrizzle('f128n_}\textcolor{red}{\path{pos1}}\path{-0?_flt.fits',output='f128n_}\textcolor{red}{\path{pos1}}\path{',driz_sep_bits='64,32',driz_cr_corr=yes,final_bits='64,32',final_wcs=yes,final_scale=}\textcolor{red}{\path{0.12}}\path{,final_rot=0.)} \\ \\
+$\star$ Check: Open \path{f128n_pos1_drz_sci.fits} in ds9. Does it look ok? Check the \path{drz_wht.fits} file. Do the spots correspond to bad areas? Can't do much more than a visual check until I try to align it with the wide filter. \\ \\ \\ \\
+%%%%%%%%BOTH 
+\centerline{\noindent\rule{10cm}{0.4pt}}\\
+\centerline{\sc Align narrow and wide}
+
+{\bf 1. Align the \textit{headers} of the narrow and wide drizzled files in WCS:}
+
+$\bigstar$ Hand pick sources from \path{f110w_pos}\textcolor{red}{\path{1}}\path{_sci_drz.fits} (reasoning: has less bright clouds, so less chance of mistaking H-II region for a source). \\
+$\star$ Check: export wide sources to \path{f110w_pos}\textcolor{red}{\path{1}}\path{_drz_wcs.coo} via xy > fk5 and load them onto \path{f128n_pos}\textcolor{red}{\path{1}}\path{_sci_drz.fits} to make sure that they appear to correspond to sources in both images. \\ \\
+$\bigstar$ Export wide sources to \path{f110w_pos}\textcolor{red}{\path{1}}\path{_drz_image.coo} via xy > image, and export narrow sources to \path{f128n_pos}\textcolor{red}{\path{1}}\path{_drz_image.coo} via xy > image. \\ \\
+$\bigstar$ Apply centroid and txdump: \\
+\path{--> teal phot} \\
+image = { f110w\_pos\textcolor{red}{1}\_drz\_sci.fits} \\ 
+coords = {f110w\_pos\textcolor{red}{1}\_drz\_image.coo} \\
+output = {f110w\_pos\textcolor{red}{1}\_drz\_image.mag} \\
+\path{--> teal phot} \\
+image = { f128n\_pos\textcolor{red}{1}\_drz\_sci.fits} \\ 
+coords = {f128n\_pos\textcolor{red}{1}\_drz\_image.coo} \\
+output = {f128n\_pos\textcolor{red}{1}\_drz\_image.mag} \\ \\
+$\star$ Test run: Before running the next step as-is, run it with a different name for the output coordinate file; i.e., instead of \path{f128n_pos1_drz_image.coo}, use \path{f128n_pos1_drz_image_test.coo} as a test run. If it works, run the code with \path{f128n_pos1_drz_image.coo}, which will overwrite the existing file. \\ \\
+\path{--> txdump }\textcolor{red}{\path{f110w_pos1_drz_image.mag}}\path{ xcen,ycen yes > }\textcolor{red}{\path{f110w_pos1_drz_image.coo}} \\ 
+\path{--> txdump }\textcolor{red}{\path{f128n_pos1_drz_image.mag}}\path{ xcen,ycen yes > }\textcolor{red}{\path{f128n_pos1_drz_image.coo}} \\ \\
+$\bigstar$ Create a catfile containing the .coo files for the narrow and wide drz.fits files in the correct order:\\
+\path{--> printf 'f128n_}\textcolor{red}{\path{pos1}}\path{_drz_sci.fits} \textcolor{red}{\path{f128n_pos1_drz_image.coo}} \path{\n f110w_}\textcolor{red}{\path{pos1}}\path{_drz_sci.fits} \textcolor{red}{\path{f110w_pos1_drz_image.coo}} \path{\n' >} \textcolor{red}{\path{pos1_catfile.list}} \\ \\
+$\star$ Check: Open \textcolor{red}{\path{pos1}}\path{_catfile.list} to make sure everything made it  \\ \\
+$\bigstar$ Tweakreg on the two drz files, in the correct order (I want to move the narrow file, not the wide one, so I list the wide one first which makes it the reference):\\ \\
+$\star$ Test run: Let \path{updatehdr=False}. \\
+\path{--> tweakreg.TweakReg('f110w_pos1_drz_sci.fits,f128n_pos1_drz_sci.fits', writecat=False, catfile='pos1_catfile.list', residplot='NoPlot', see2dplot=no, shiftfile=True, outshifts='drz_pos1.txt', updatehdr=False)}\\ \\
+$\star$ Check: Open \path{drz_pos1.txt} to see if the [dx, dy, drot, scale, xfit\_rms, yfit\_rms] values make sense. Reasonable values for dx and dy are within $\pm 10$; drot and scale should not be large shifts; and xfit\_rms and yfit\_rms should be within $\pm 0.15$ or so. \\ \\
+\path{--> tweakreg.TweakReg('f110w_pos1_drz_sci.fits, f128n_pos1_drz_sci.fits', writecat=False, catfile='pos1_catfile.list', residplot='NoPlot', see2dplot=no, shiftfile=True, outshifts='drz_pos1.txt', updatehdr=True, wcsname='TWEAK_WCS')} \\ \\
+$\star$ Check the header to make sure the WCS name you just specified has made it: \\
+\path{--> hedit f128n_pos1_drz_sci.fits wcsnam* .} \\
+The correct output has \path{TWEAK_WCS} equal to the very last wcsname. \\ 
+
+{\bf 2. Propagate solution back to flt fits files:}
+
+$\bigstar$ Use tweakback: \\
+\path{--> tweakback.tweakback('f128n_}\textcolor{red}{\path{pos1}}\path{_drz_sci.fits',input='f128n_}\textcolor{red}{\path{pos1}}\path{-0?_flt.fits',verbose=True)}
+
+$\star$ Check the header to make sure the WCS name you just specified has made it: \\
+\path{--> hedit  f128n_pos1-0?_flt.fits[1] wcsnam* .}\\
+Should have the most recent WCS name (\path{WCSNAM}) equal to \path{TWEAK_WCS} (from above). \\ 
+
+{\bf 3. Align narrow and wide drizzled images in pixel space:}
+
+$\bigstar$ Use astrodrizzle with the reference image set to \path{f110w_pos1_drz_sci.fits}.\\ \\
+$\star$  Test run: Rename the \path{drz_sci} and \path{drz_wht} narrow filter files (the ones I'm going to change in a minute) because otherwise, the following astrodrizzle step will overwrite them and I may want to compare. \\
+\path{--> imrename f128n_pos1_drz_sci.fits f128n_pos1_drz_sci_v1.fits}\\
+\path{--> imrename f128n_pos1_drz_wht.fits f128n_pos1_drz_wht_v1.fits}\\ \\
+Then, finally, proceed to the astrodrizzle step: \\
+\path{--> astrodrizzle.AstroDrizzle('f128n_pos1-0?_flt.fits',output='f128n_pos1',driz_sep_bits='64,32',driz_cr_corr=yes,final_bits='64,32',final_wcs=yes,final_refimage='f110w_pos1_drz_sci.fits')}\\
+$\star$ Check: Compare the two images in \path{ds9} using and RGB frame (I like to use red for f128n so that the H-II regions glow red). Confirmed: It worked! See Figs.~\ref{fig:itlives} and \ref{fig:itlives2}. \\ \\
+
+\end{shaded}
+
+\begin{figure}
+\centering
+\begin{minipage}[b]{.45\linewidth}
+\includegraphics[width=1\columnwidth]{pos1_beforeandafter1}
+\caption{RGB frames with f128n (red) and f110w (green). LHS has \texttt{f128n\_pos1\_drz\_sci\_v1.fits}, and \texttt{f128n\_pos1\_drz\_sci.fits} on RHS.}
+\label{fig:itlives}
+\end{minipage}
+\quad
+\begin{minipage}[b]{.45\linewidth}
+\includegraphics[width=1\columnwidth]{pos1_beforeandafter2}
+\caption{RGB frames with f128n (red) and f110w (green). Same as Fig.~\ref{fig:itlives}, except the selection is taken from a different portion of the sky.}
+\label{fig:itlives2}
+\end{minipage}
+\end{figure}
+
+Now, I must repeat for the rest of the positions. 
+
+
+\end{document}
